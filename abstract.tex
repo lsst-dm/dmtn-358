@@ -1,0 +1,7 @@
+
+\begin{abstract}
+In 2026 large language model coding agents such as Codex and Claude have developed rapidly and changed the face of software development. They can be used for debugging, performance optimization, and adding features to existing codebases. As the tooling improved we decided to see if we could use these systems to port a large C library to Rust. The library we chose was the Starlink AST library, a library that consists of 200,000 lines of C (not including comments or blank lines) that has been in development for over 30 years and contains some very specific fixes for very rare combinations of FITS headers.
+
+In this paper I will tell the story of agents getting confused (but also agents improving), agents cutting corners and hoping I wouldn't notice, agents finding bugs in the original code but then making sure the Rust had the same bugs, eye-watering token costs, and how the real lesson from this journey is that your ported code is only as good as the test suite of your original library.
+\end{abstract}
+
