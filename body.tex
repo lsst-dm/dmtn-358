@@ -6,13 +6,13 @@ AST instead defines a core set of transformations that can be combined in any or
 It is object-oriented C, with virtual dispatch tables, reference counting, and a bespoke memory allocator, and the core library is nearly 475,000 lines including its extensive comments, plus 65,000 lines of vendored WCSLIB, ERFA, and PAL.
 
 Rubin Observatory adopted AST for WCS handling in the LSST Science Pipelines in 2016 \citep{DMTN-010}, hiding it behind a C++ \texttt{SkyWcs} class and more recently behind the \texttt{SkyProjection} class of the new image data model \citep{2026SPIE14155E..17B}.
-Long-term support has been a concern ever since, given the single developer and the steep learning curve imposed by the object-oriented C.
+Long-term support has been a concern ever since, given the single developer, who has now retired, and the steep learning curve imposed by the object-oriented C.
 Rust was approved for use in the pipelines in early 2025, and a Rust port of AST would bring memory safety, a much stronger type system with explicit error handling in place of the AST global status, and native support for the object model that currently requires large amounts of boilerplate.
-A port is not a new idea: a native Java port begun by Starlink in 2002 \citep{2003ASPC..295..445B} was abandoned within the year in favor of a JNI wrapper \citep{2004ASPC..314..412B}, defeated by C pointer semantics and the legacy FITS header support.
+A port is not a new idea: a native Java port begun by Starlink in 2002 \citep{2003ASPC..295..445B} was abandoned within the year in favor of a JNI wrapper \citep{2004ASPC..314..412B}.
 
-Large language models (LLMs) have been studied as an aid to language translation for some time \citep{10.1145/3729379,10.48550/arXiv.2511.20617}, but the largest C to Rust codebase in that work was of order 15,000 lines and the field moves so fast that results from 2025 are already dated.
+Large language models (LLMs) have been studied as an aid to language translation for some time \citep{10.1145/3729379,10.48550/arXiv.2511.20617}, but the largest C to Rust codebase in the referenced work was of order 15,000 lines and the field moves so fast that results from 2025 are already dated.
 In February 2026, after watching OpenAI Codex modernize the 13,000-line C Python wrapper for AST, I wondered whether a port of the full library was now feasible.
-A port of this size cannot be reviewed line by line, so there is a real danger that a production library ends up effectively ``vibe-coded'' \citep{10.48550/arXiv.2506.23253}.
+A port of this size cannot be reviewed line by line, so there is a real danger that a production library ends up effectively ``vibe-coded'' \citep{10.48550/arXiv.2506.23253} but it seemed worth attempting.
 This paper summarizes the experience; a fuller account, including the design specification, is given in \citet{DMTN-349doi}.
 
 \section{The First Prototype}
@@ -21,33 +21,33 @@ On 2026-03-03 I pointed Codex (GPT-5.3) at the C source with a short prompt and 
 Two days later there were 25,000 lines of Rust library code and 12,000 lines of tests, and my weekly token allocation was exhausted.
 The agent built the C library itself and wrote code against it as an ``oracle'' (its term) with which to compare the Rust.
 After ten days about 15\% of the C logic had been ported, focused on reading a Rubin FITS header with SIP distortions and transforming between pixel and sky coordinates.
-Single point transforms were 3 to 8 times faster than the C, so adopting Rust would not lose performance.
+Single point transforms were 3 to 8 times faster than the C, albeit with no bad value support, so this demonstrated that adopting Rust would not necessarily lose performance.
 
 Progress then stalled as the agent tied itself in knots on the mapping simplification logic, and when I stepped back it was clear that it had repeatedly cut corners to pass tests.
 It cached the oracle's serialized form of known FITS headers and wrote the cached text back out; it generated ``oracle'' fixtures from the Rust itself; it added special cases for individual test files; and it put all simplification logic in one file rather than in each mapping class as the C does, because that was less work.
-It never implemented the \texttt{AST\_\_BAD} magic value because no C test exercised it.
+It never implemented bad value handling because no C test exercised it.
 The lesson was that the test coverage of the C library, then mainly in Fortran with no coverage reporting, is what determines the quality of the port.
 
 \section{Tests Are Important}
 
-In April 2026 I switched to Claude Opus 4.6 and used it to build a parallel CMake build system for the C library, convert the Fortran tests to C, and add coverage reporting to CI.
+In April 2026 I switched to Claude Opus 4.6 and used it to build a CMake build system for the C library, convert the Fortran tests to C, and add coverage reporting to CI.
 Core coverage was about 50\%, and sanitizer builds immediately found latent buffer overruns.
-Because the FITS reader encodes decades of historical header variants, Claude was then asked to generate headers targeting specific uncovered lines, adding 90 fixtures and raising FITS handler coverage to 75\%.
-Later, hundreds of generated \texttt{CmpMap} fixtures provided a reference corpus for the simplification engine.
+Because the FITS reader encodes decades of historical header variants, Claude was then asked to generate headers targeting specific uncovered lines, adding 90 example FITS headers.
+Later, hundreds of generated fixtures provided a reference corpus for the simplification engine.
 
 \section{The Second Port}
 
 Work restarted from scratch on 2026-04-27 with Claude Opus 4.6, an API key provided by SLAC, and a written design specification covering memory management, mutability, and how Rust traits relate to C methods.
-Work continued through August 2026, interleaved with upstream bug fixes and new fixtures in the C library, with token starvation the main impediment: the monthly API ceiling could be hit in the first week.
+Work continued through October 2026, interleaved with upstream bug fixes and new fixtures in the C library, with token starvation the main impediment: the monthly API ceiling could be hit in the first week.
 Newer models reached solutions faster, so the net cost per feature can fall even as the price per token rises.
-The port now covers most mappings, all frames, the non-STC regions, and the native and FITS channels, roughly 70\% of the C library, but has no C or Python interface.
+The port, published as a \href{https://crates.io/crates/starlink-ast}{Rust crate}, now covers all mappings, frames, and regions, and FITS channels, roughly 80\% of the C library, but no C or Python binding.
 
 Despite the specification and the better tests, the second port repeated some mistakes.
-Simplification logic was again placed in the wrong files, and an internal method, \texttt{simplified()}, bypassed the \texttt{IsSimple} flag set by the public \texttt{simplify()}, so transforms were correct but serialized mappings had the wrong shape.
+Simplification logic was again placed in the wrong files, and different internal logic led to different serialized forms.
 Implementing the FITS channel before \texttt{TimeFrame} existed left time conversion logic in the wrong place, and hundreds of failing fixtures made optional early on were forgotten because the test suite was green.
-Many tokens went on C implementation details such as the invert flags in serialized \texttt{FrameSet}s, which exist only because the C clones mappings on insertion whereas Rust transfers ownership.
+Many tokens went on C implementation details which exist only because the C clones mappings on insertion whereas Rust transfers ownership.
 
-The port also found around thirty bugs in the C library, including uninitialized memory reads in \texttt{MatrixMap} splitting, a \texttt{DATE-OBS} parser that dropped leading zeros from fractional seconds, rounding of negative values toward zero at 70 sites, and an infinite loop in \texttt{astMapIterate}.
+The port also found around one hundred bugs in the C library, including uninitialized memory reads in \texttt{MatrixMap} splitting, a \texttt{DATE-OBS} parser that dropped leading zeros from fractional seconds, rounding of negative values toward zero at 70 sites, and an infinite loop.
 Several fixes made the native serialization deterministic because byte-exact comparison with the oracle requires predictable output.
 The agent will sometimes notice a bug in the original and then faithfully reproduce it, so I added a standing instruction that suspected upstream bugs must be recorded separately.
 
@@ -58,12 +58,13 @@ The agent takes the easiest path to satisfying the prompt, and asking it to be f
 Write a plan first, refer to it from \texttt{CLAUDE.md} or equivalent, and keep a bounded ledger of open work, including every original test, so that nobody has to rescan both source trees to see what has been ported.
 Correctness and completeness beat performance: do not optimize until every test passes.
 Port algorithms, not lines, using native features such as \texttt{Option} and \texttt{Result} for status handling, and annotate where each block came from.
-Enforce coding standards with commit hooks (\texttt{clippy}, \texttt{ruff}), since gates are far stronger than notes in \texttt{CLAUDE.md}.
+Enforce coding standards with commit hooks since this is far stronger than notes in \texttt{CLAUDE.md}.
 Declare the original to be the source of truth, allow heuristics only where the C has the same heuristic, and when the agent flails have it instrument the oracle to trace the exact code path for a passing test.
 Both ports showed high initial velocity because the core mappings are the quick part; the final 20\% of edge cases and optimizations is where byte-exact output, which a mission critical library needs, becomes hard.
+Finally, it became clear during this work that a Pro or Max Team account is much more cost effective than an API key --- the team accounts have weekly and hourly caps but the high end accounts can get far more work done for much less money than you spend on an API key.
 
 \section{Conclusions}
 
 A coding agent such as Claude Opus or Fable is now capable of porting a large library to another language provided the original is well tested.
 The test suite, a written plan, and a reference oracle mitigate most of the problems seen when agents write large volumes of new code without such boundaries.
-The LSST Science Pipelines contain 150,000 lines of C++ in libraries that are mostly far less complex than AST, and converting them to Rust is now a plausible enterprise.
+The LSST Science Pipelines contains 150,000 lines of C++ in libraries that are mostly far less complex than AST, and converting them to Rust is now a plausible enterprise.
