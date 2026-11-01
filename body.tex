@@ -5,7 +5,7 @@ Standard FITS WCS \citep{2002A&A...395.1077C} describes only undistorted celesti
 AST instead defines a core set of transformations that can be combined in any order, serially or in parallel.
 It is object-oriented C, with virtual dispatch tables, reference counting, and a bespoke memory allocator, and the core library is nearly 475,000 lines including its extensive comments, plus 65,000 lines of vendored WCSLIB, ERFA, and PAL.
 
-Rubin Observatory adopted AST for WCS handling in the LSST Science Pipelines in 2016 \citep{DMTN-010}, hiding it behind a C++ \texttt{SkyWcs} class and more recently behind the \texttt{SkyProjection} class of the new image data model \citep{DMTN-339}.
+Rubin Observatory adopted AST for WCS handling in the LSST Science Pipelines in 2016 \citep{DMTN-010}, hiding it behind a C++ \texttt{SkyWcs} class and more recently behind the \texttt{SkyProjection} class of the new image data model \citep{2026SPIE14155E..17B}.
 Long-term support has been a concern ever since, given the single developer and the steep learning curve imposed by the object-oriented C.
 Rust was approved for use in the pipelines in early 2025, and a Rust port of AST would bring memory safety, a much stronger type system with explicit error handling in place of the AST global status, and native support for the object model that currently requires large amounts of boilerplate.
 A port is not a new idea: a native Java port begun by Starlink in 2002 \citep{2003ASPC..295..445B} was abandoned within the year in favor of a JNI wrapper \citep{2004ASPC..314..412B}, defeated by C pointer semantics and the legacy FITS header support.
@@ -13,7 +13,7 @@ A port is not a new idea: a native Java port begun by Starlink in 2002 \citep{20
 Large language models (LLMs) have been studied as an aid to language translation for some time \citep{10.1145/3729379,10.48550/arXiv.2511.20617}, but the largest C to Rust codebase in that work was of order 15,000 lines and the field moves so fast that results from 2025 are already dated.
 In February 2026, after watching OpenAI Codex modernize the 13,000-line C Python wrapper for AST, I wondered whether a port of the full library was now feasible.
 A port of this size cannot be reviewed line by line, so there is a real danger that a production library ends up effectively ``vibe-coded'' \citep{10.48550/arXiv.2506.23253}.
-This paper summarizes the experience; a fuller account, including the design specification, is given in \citet{DMTN-349}.
+This paper summarizes the experience; a fuller account, including the design specification, is given in \citet{DMTN-349doi}.
 
 \section{The First Prototype}
 
