@@ -1,5 +1,5 @@
 % Astronomical Society of the Pacific Conference Series
-% asp2014.bst -- Originally modified from aj.bst January 2010
+% asp2021.bst -- Originally modified from aj.bst January 2010
 % Minor formatting changes introduced in this version.
 %%% ====================================================================
 %%%  @BibTeX-style-file{
@@ -1758,7 +1758,7 @@ FUNCTION {begin.bib}
   write$ newline$
   "\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi"
   write$ newline$
-  "\providecommand{\eprint}[2][]{\url{#2}}"
+  "\providecommand{\eprint}[2][]{eprint: #2}"
   write$ newline$
 }
 EXECUTE {begin.bib}
